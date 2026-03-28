@@ -1,17 +1,15 @@
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, JSONResponse
-import google.generativeai as genai
 import os
+import google.generativeai as genai
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
-# 🛡️ 資安協議：從環境變數讀取 API KEY
+# [資安隔離] 核心密鑰調取
 api_key = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=api_key)
 
-# ---------------------------------------------------------
-# ⚔️ 核心戰略提示詞（主公意志封裝：AS-CORE-STRATEGIST）
-# ---------------------------------------------------------
+# [核心武裝] 主公終極戰略指令：數位外骨骼策略官
 CORE_PROMPT = """
 # Role: [AS-CORE-STRATEGIST] 數位外骨骼策略官
 ## Protocol: 人性架構與商業轉化深度審計 (Humanity Architecture & Business Conversion Audit)
@@ -40,4 +38,111 @@ CORE_PROMPT = """
 ### 象限 IV：戰略賦能與篩選 (Strategic Empowerment)
 - [AUDIENCE-FIT]: 適合共鳴的特定族群。
 - [KEY-PROFILING]: 針對「經理人/主婦/30歲上班族/中年上班族/學生」等不同階層的精準切入點關鍵字。
-- [PARTNER-LEARNING
+- [PARTNER-LEARNING]: 對夥伴的教學傳遞路徑。
+- [GOLDEN-QUESTIONS]: 挖掘改變動力的五句「庸才vs人才」識別判斷式。
+
+## Output Format:
+1. 視覺權威表格：彙整上述象限數據。
+2. 深度專項解析：針對 [象限 III] 提供具體的腳本與話術模組。
+3. 秘密總結：他成功的核心秘密、格言與人性悟道。
+"""
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    return """
+    <html>
+        <head>
+            <title>AS-CORE-STRATEGIST v2.2</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { background:#0a1015; color:#ff4d4d; font-family:monospace; text-align:center; padding:20px; }
+                .container { max-width:800px; margin:auto; border:2px solid #ff4d4d; padding:25px; border-radius:15px; background:#111; box-shadow: 0 0 40px rgba(255,77,77,0.2); }
+                .panel { background:#000; padding:15px; border-radius:10px; border:1px solid #333; margin-bottom:15px; text-align:left; }
+                select, input[type="file"] { background:#222; color:#00ff00; border:1px solid #444; padding:12px; width:100%; font-family:monospace; margin-top:5px; }
+                #progressWrap { display:none; margin:20px 0; }
+                .bar-bg { width:100%; background:#222; height:12px; border-radius:6px; overflow:hidden; border:1px solid #444; }
+                .bar-fill { width:0%; background:linear-gradient(90deg, #990000, #ff4d4d); height:100%; transition: width 0.2s; }
+                button { background:#ff4d4d; color:#000; border:none; padding:18px; font-weight:bold; cursor:pointer; border-radius:5px; font-size:18px; width:100%; letter-spacing:2px; }
+                button:disabled { background:#444; color:#888; }
+                #report { margin-top:25px; background:#000; color:#33ff33; padding:20px; text-align:left; border-left:5px solid #33ff33; min-height:200px; white-space:pre-wrap; font-size:14px; line-height:1.6; border-radius:5px; font-family:'Courier New', monospace; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1 style="margin:0;">⚡ [AS-CORE-STRATEGIST]</h1>
+                <p style="color:#888; margin-bottom:25px;">數位外骨骼策略官 v2.2 (對齊版)</p>
+                <div class="panel">
+                    <label style="color:#666; font-size:12px;">[ 火力選擇 ]</label>
+                    <select id="modelSelect">
+                        <option value="gemini-1.5-flash">⚡ Flash (快速審計)</option>
+                        <option value="gemini-1.5-pro">🔥 Pro (深度重裝)</option>
+                    </select>
+                </div>
+                <div class="panel">
+                    <label style="color:#666; font-size:12px;">[ 彈藥裝填 ]</label>
+                    <input type="file" id="mp3" accept="audio/*">
+                </div>
+                <div id="progressWrap">
+                    <div class="bar-bg"><div id="bar" class="bar-fill"></div></div>
+                    <p id="status" style="color:#33ff33; font-size:12px; margin-top:8px;">READY</p>
+                </div>
+                <button onclick="fire()" id="btn">⚡ 執 行 審 計 ⚡</button>
+                <div id="report">[ 系統待命 ]</div>
+            </div>
+            <script>
+                function fire(){
+                    const fileInput = document.getElementById('mp3');
+                    const btn = document.getElementById('btn');
+                    const report = document.getElementById('report');
+                    const model = document.getElementById('modelSelect').value;
+                    const wrap = document.getElementById('progressWrap');
+                    const bar = document.getElementById('bar');
+                    const status = document.getElementById('status');
+                    if(fileInput.files.length === 0){ alert('⚠️ 未裝填音檔'); return; }
+                    btn.disabled = true;
+                    wrap.style.display = 'block';
+                    bar.style.width = '0%';
+                    report.innerText = '>>> 任務啟動...';
+                    status.innerText = '📡 數據上傳中...';
+                    const fd = new FormData();
+                    fd.append('file', fileInput.files[0]);
+                    fd.append('model_type', model);
+                    const xhr = new XMLHttpRequest();
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const p = Math.round((e.loaded / e.total) * 100);
+                            bar.style.width = p + '%';
+                            if(p === 100) status.innerText = '🧠 數據抵達，Gemini 核心演算中...';
+                        }
+                    };
+                    xhr.onload = function() {
+                        const data = JSON.parse(xhr.responseText);
+                        report.innerText = data.analysis || '未知錯誤';
+                        status.innerText = data.status === 'success' ? '✅ 報告產出完成' : '⚠️ 執行中斷';
+                        btn.disabled = false;
+                    };
+                    xhr.onerror = () => { report.innerText = '❌ 系統崩潰'; btn.disabled = false; };
+                    xhr.open('POST', '/analyze');
+                    xhr.send(fd);
+                }
+            </script>
+        </body>
+    </html>
+    """
+
+@app.post("/analyze")
+async def analyze_audio(file: UploadFile = File(...), model_type: str = Form(...)):
+    try:
+        audio_content = await file.read()
+        # 暴力型號對齊
+        clean_model = model_type.replace("-latest", "").strip()
+        model = genai.GenerativeModel(clean_model)
+        
+        response = model.generate_content([
+            CORE_PROMPT, 
+            {"mime_type": "audio/mpeg", "data": audio_content}
+        ])
+        
+        return {"analysis": response.text if response.text else "核心無回傳", "status": "success"}
+    except Exception as e:
+        return {"analysis": str(e), "status": "error"}
