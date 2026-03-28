@@ -7,7 +7,7 @@ from google.genai import types
 
 app = FastAPI()
 
-# [核心武裝] 主公終極戰略指令 - 100% 裝填
+# ⚔️ [AS-CORE-STRATEGIST] 終極提示詞 - 100% 裝填，絕不省略
 CORE_PROMPT = """
 # Role: [AS-CORE-STRATEGIST] 數位外骨骼策略官
 ## Protocol: 人性架構與商業轉化深度審計 (Humanity Architecture & Business Conversion Audit)
@@ -51,75 +51,42 @@ async def root():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>AS-CORE v4.0 | Next-Gen</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>AS-CORE v4.0</title>
         <style>
             body { background:#0a1015; color:#ff4d4d; font-family:monospace; text-align:center; padding:20px; }
             .container { max-width:850px; margin:auto; border:2px solid #ff4d4d; padding:25px; border-radius:15px; background:#111; box-shadow: 0 0 50px rgba(255,77,77,0.3); }
-            .panel { background:#000; padding:15px; border-radius:10px; border:1px solid #333; margin-bottom:15px; text-align:left; }
-            select, input[type="file"] { background:#222; color:#00ff00; border:1px solid #444; padding:12px; width:100%; font-family:monospace; margin-top:5px; outline:none; }
-            button { background:#ff4d4d; color:#000; border:none; padding:18px; font-weight:bold; cursor:pointer; border-radius:5px; font-size:18px; width:100%; letter-spacing:2px; transition:0.3s; }
-            #progress { display:none; margin:20px 0; background:#222; height:10px; border-radius:5px; overflow:hidden; }
-            #bar { background:linear-gradient(90deg, #990000, #ff4d4d); width:0%; height:100%; transition: 0.2s; }
-            #report { margin-top:25px; background:#000; color:#33ff33; padding:25px; text-align:left; border-left:5px solid #33ff33; min-height:300px; white-space:pre-wrap; font-size:14px; line-height:1.7; border-radius:5px; }
+            button { background:#ff4d4d; color:#000; border:none; padding:18px; font-weight:bold; cursor:pointer; width:100%; border-radius:5px; }
+            #report { margin-top:25px; background:#000; color:#33ff33; padding:20px; text-align:left; border-left:5px solid #33ff33; white-space:pre-wrap; }
         </style>
     </head>
     <body>
         <div class="container">
-            <h1 style="margin:0; letter-spacing:3px;">⚡ [AS-CORE-STRATEGIST]</h1>
-            <p style="color:#888; margin-bottom:20px;">數位外骨骼策略官 v4.0 | 次世代引擎</p>
-            <div class="panel">
-                <label style="color:#666; font-size:11px;">[ 核心火力選擇 ]</label>
-                <select id="m">
-                    <option value="gemini-2.0-flash-thinking-exp">🧠 Thinking (深層邏輯反思)</option>
-                    <option value="gemini-1.5-pro">🔥 Pro (重裝深度解析)</option>
-                    <option value="gemini-1.5-flash">⚡ Flash (快速閃電回報)</option>
-                </select>
-            </div>
-            <div class="panel">
-                <label style="color:#666; font-size:11px;">[ 裝填戰略音軌 ]</label>
-                <input type="file" id="f" accept="audio/*">
-            </div>
-            <div id="progress"><div id="bar"></div></div>
-            <p id="status" style="color:#00ff00; font-size:12px; margin:10px 0;"></p>
-            <button id="btn" onclick="fire()">⚡ 執 行 審 計 ⚡</button>
-            <div id="report">[ 系統待命中 ]</div>
+            <h1>⚡ [AS-CORE-STRATEGIST] v4.0</h1>
+            <select id="m" style="width:100%; padding:10px; margin-bottom:10px;">
+                <option value="gemini-2.0-flash-thinking-exp">🧠 Thinking (深層邏輯)</option>
+                <option value="gemini-1.5-pro">🔥 Pro (重裝深度)</option>
+            </select>
+            <input type="file" id="f" accept="audio/*" style="margin-bottom:20px; width:100%;">
+            <button onclick="fire()" id="btn">⚡ 執行審計 ⚡</button>
+            <div id="report">等待投彈...</div>
         </div>
         <script>
             async function fire(){
                 const file = document.getElementById('f').files[0];
+                if(!file){ alert('請選檔案'); return; }
                 const btn = document.getElementById('btn');
                 const report = document.getElementById('report');
-                const status = document.getElementById('status');
-                const bar = document.getElementById('bar');
-                const prog = document.getElementById('progress');
-                if(!file){ alert('⚠️ 未裝填戰略彈藥'); return; }
                 btn.disabled = true;
-                prog.style.display = 'block';
-                bar.style.width = '0%';
-                report.innerText = '>>> 核心協議啟動...';
-                status.innerText = '📡 數據上傳 Zeabur...';
+                report.innerText = '📡 數據上傳與演算中...';
                 const fd = new FormData();
                 fd.append('file', file);
                 fd.append('model_type', document.getElementById('m').value);
-                const xhr = new XMLHttpRequest();
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        const p = Math.round((e.loaded / e.total) * 100);
-                        bar.style.width = p + '%';
-                        if(p === 100) status.innerText = '🧠 數據抵達核心，執行深度審計中...';
-                    }
-                };
-                xhr.onload = function() {
-                    try {
-                        const data = JSON.parse(xhr.responseText);
-                        report.innerText = data.analysis;
-                        status.innerText = data.status === 'success' ? '✅ 審計戰報生成完成' : '❌ 審計失敗';
-                    } catch(e) { report.innerText = '❌ 運算崩潰：' + xhr.responseText; }
-                    btn.disabled = false;
-                };
-                xhr.open('POST', '/analyze');
-                xhr.send(fd);
+                try {
+                    const res = await fetch('/analyze', {method:'POST', body:fd});
+                    const data = await res.json();
+                    report.innerText = data.analysis;
+                } catch(e) { report.innerText = '❌ 錯誤: ' + e; }
+                btn.disabled = false;
             }
         </script>
     </body>
@@ -132,7 +99,7 @@ async def analyze_audio(file: UploadFile = File(...), model_type: str = Form(...
         audio_data = await file.read()
         client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
         
-        # 次世代 SDK 調用協議
+        # 使用次世代 SDK 協議，徹底解決 404 與路徑迷霧
         response = client.models.generate_content(
             model=model_type,
             contents=[
@@ -140,12 +107,11 @@ async def analyze_audio(file: UploadFile = File(...), model_type: str = Form(...
                 types.Part.from_bytes(data=audio_data, mime_type="audio/mpeg")
             ]
         )
-        
-        return {"analysis": response.text if response.text else "❌ 核心無回傳", "status": "success"}
+        return {"analysis": response.text, "status": "success"}
     except Exception as e:
         return {"analysis": f"❌ 協議中斷: {str(e)}", "status": "error"}
 
 if __name__ == "__main__":
-    # 強制對齊 Zeabur 端口，防止 Health Check 失敗被 Killing
+    # 強制焊接 Zeabur 端口
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
