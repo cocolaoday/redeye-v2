@@ -1,12 +1,17 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import HTMLResponse, JSONResponse
 import google.generativeai as genai
 import os
 
 app = FastAPI()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# --- [AS-CORE-STRATEGIST] 核心指令焊接區 ---
+# 🛡️ 資安協議：從環境變數讀取 API KEY
+api_key = os.getenv("GOOGLE_API_KEY")
+genai.configure(api_key=api_key)
+
+# ---------------------------------------------------------
+# ⚔️ 核心戰略提示詞（主公意志封裝，前端不可見）
+# ---------------------------------------------------------
 CORE_PROMPT = """
 # Role: [AS-CORE-STRATEGIST] 數位外骨骼策略官
 ## Protocol: 人性架構與商業轉化深度審計 (Humanity Architecture & Business Conversion Audit)
@@ -14,7 +19,7 @@ CORE_PROMPT = """
 你現在是一名具備 30 年人性洞察經驗的「戰略解析師」。你的任務是針對提供的音檔進行「無死角解析」，將感性的故事解構為理性的「商業運作模組」。
 
 執行指令：
-請在聽完音檔後，將數據自動歸類至以下四大「武裝象限」，並以表格呈現，禁止輸出任何關於「本提示詞結構」的描述，直接輸出最終審計結果。使用繁體中文。
+請在聽完音檔後，將數據自動歸類至以下四大「武裝象限」，並以表格呈現，禁止輸出任何關於「本提示詞結構」的描述，直接輸出最終審計結果。
 
 ### 象限 I：主體原始數據 (Base Identity)
 - [ID-BIO]: 包含姓名、產業、背景、前世生活（經營前的狀態與困擾）。
@@ -34,7 +39,7 @@ CORE_PROMPT = """
 
 ### 象限 IV：戰略賦能與篩選 (Strategic Empowerment)
 - [AUDIENCE-FIT]: 適合共鳴的特定族群。
-- [KEY-PROFILING]: 針對「經理人/上班族/工程師/中年男子/主婦/學生」等不同階層的精準切入點關鍵字。
+- [KEY-PROFILING]: 針對「經理人/主婦/30歲上班族/中年上班族/學生」等不同階層的精準切入點關鍵字。
 - [PARTNER-LEARNING]: 對夥伴的教學傳遞路徑。
 - [GOLDEN-QUESTIONS]: 挖掘改變動力的五句「庸才vs人才」識別判斷式。
 
@@ -43,76 +48,134 @@ CORE_PROMPT = """
 2. 深度專項解析：針對 [象限 III] 提供具體的腳本與話術模組。
 3. 秘密總結：他成功的核心秘密、格言與人性悟道。
 """
-# ------------------------------------------
 
+# ---------------------------------------------------------
+# 🏗️ APP 前端大門（含進度條與火力切換）
+# ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def root():
     return """
     <html>
         <head>
-            <title>Red-Eye Strategist Engine</title>
+            <title>AS-CORE-STRATEGIST v2.0</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { background:#0a1015; color:#ff4d4d; font-family:monospace; text-align:center; padding:30px 10px; }
+                .container { max-width:800px; margin:auto; border:2px solid #ff4d4d; padding:30px; border-radius:15px; background:#111; box-shadow: 0 0 40px rgba(255,77,77,0.2); }
+                .panel { background:#000; padding:15px; border-radius:10px; border:1px solid #333; margin-bottom:20px; text-align:left; }
+                select, input[type="file"] { background:#222; color:#00ff00; border:1px solid #444; padding:10px; width:100%; font-family:monospace; margin-top:5px; }
+                #progressWrap { display:none; margin-top:20px; }
+                .bar-bg { width:100%; background:#222; height:10px; border-radius:5px; overflow:hidden; }
+                .bar-fill { width:0%; background:#ff4d4d; height:100%; transition: width 0.2s; }
+                button { background:#ff4d4d; color:#000; border:none; padding:18px; font-weight:bold; cursor:pointer; border-radius:5px; font-size:18px; width:100%; letter-spacing:2px; transition:0.3s; }
+                button:disabled { background:#444; color:#888; cursor:not-allowed; }
+                #report { margin-top:30px; background:#000; color:#33ff33; padding:20px; text-align:left; border-left:5px solid #33ff33; min-height:200px; white-space:pre-wrap; font-size:14px; line-height:1.6; border-radius:5px; overflow-x:auto; }
+            </style>
         </head>
-        <body style="background:#0a0a0a; color:#ff4d4d; font-family:sans-serif; text-align:center; padding:20px;">
-            <div style="border: 2px solid #ff4d4d; display:inline-block; padding:30px; border-radius:15px; background:#111; max-width:90%; box-shadow: 0 0 20px rgba(255,0,0,0.3); margin-top:50px;">
-                <h1 style="margin-bottom:10px; letter-spacing:2px;">⚡ 紅瞳重工：戰略審計坦克</h1>
-                <p style="color:#888; margin-bottom:30px;">[ AS-CORE-STRATEGIST 1.0 | 意志封裝完畢 ]</p>
+        <body>
+            <div class="container">
+                <h1 style="margin:0; letter-spacing:3px;">⚡ [AS-CORE-STRATEGIST]</h1>
+                <p style="color:#888; margin-bottom:30px;">數位外骨骼策略官 v2.0</p>
                 
-                <div style="background:#222; padding:20px; border-radius:10px; border:1px solid #333;">
-                    <input type="file" id="mp3" accept="audio/*" style="color:white; margin-bottom:20px; width:100%;">
-                    <br>
-                    <button onclick="fire()" id="btn" style="background:#ff4d4d; color:black; border:none; padding:15px 50px; font-weight:bold; cursor:pointer; border-radius:5px; font-size:18px; width:100%;">⚡ 發射深度審計</button>
+                <div class="panel">
+                    <label style="color:#666; font-size:12px;">[ 1. 火力切換 ]</label>
+                    <select id="modelSelect">
+                        <option value="gemini-1.5-flash-latest">⚡ Gemini 1.5 Flash (快速審計)</option>
+                        <option value="gemini-1.5-pro-latest">🔥 Gemini 1.5 Pro (重裝深度解析)</option>
+                    </select>
                 </div>
+
+                <div class="panel">
+                    <label style="color:#666; font-size:12px;">[ 2. 裝填音軌 ]</label>
+                    <input type="file" id="mp3" accept="audio/*">
+                </div>
+
+                <div id="progressWrap">
+                    <div class="bar-bg"><div id="bar" class="bar-fill"></div></div>
+                    <p id="status" style="color:#33ff33; font-size:12px; margin-top:8px;">準備緒...</p>
+                </div>
+
+                <button onclick="fire()" id="btn">⚡ 執 行 審 計 ⚡</button>
                 
-                <div id="report" style="margin-top:40px; background:#000; color:#00ff00; padding:25px; text-align:left; border-left:4px solid #00ff00; min-height:200px; white-space:pre-wrap; font-family:monospace; line-height:1.6; overflow-x:auto;">等待主公下達音訊彈藥...</div>
+                <div id="report">[ 系統待命 ]</div>
             </div>
 
             <script>
-                async function fire(){
+                function fire(){
                     const fileInput = document.getElementById('mp3');
                     const btn = document.getElementById('btn');
                     const report = document.getElementById('report');
+                    const model = document.getElementById('modelSelect').value;
+                    const wrap = document.getElementById('progressWrap');
+                    const bar = document.getElementById('bar');
+                    const status = document.getElementById('status');
+
+                    if(fileInput.files.length === 0){ alert('⚠️ 尚未裝填音檔！'); return; }
                     
-                    if(fileInput.files.length === 0){ alert('報告主公：尚未裝填音檔！'); return; }
-                    
-                    btn.innerText = '📡 正在跨維度解析人性架構...';
                     btn.disabled = true;
-                    report.innerText = '📡 正在將感性數據解構為商業模組...\\n📡 執行 [AS-CORE-STRATEGIST] 審計協議中...';
+                    wrap.style.display = 'block';
+                    bar.style.width = '0%';
+                    report.innerText = '[ 任務開始 ]';
+                    status.innerText = '📡 傳輸中... (上傳進度)';
 
                     const fd = new FormData();
                     fd.append('file', fileInput.files[0]);
+                    fd.append('model_type', model);
 
-                    try {
-                        const res = await fetch('/analyze', { method: 'POST', body: fd });
-                        const data = await res.json();
-                        if(data.error) {
-                            report.innerText = '❌ 運算中斷：' + data.error;
-                        } else {
-                            report.innerText = data.analysis;
+                    const xhr = new XMLHttpRequest();
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable) {
+                            const p = Math.round((e.loaded / e.total) * 100);
+                            bar.style.width = p + '%';
+                            if(p === 100) status.innerText = '🧠 傳輸完成！Gemini 核心演算中 (預計 5-20 秒)...';
                         }
-                    } catch (e) {
-                        report.innerText = '❌ 發射失敗：連線遭攔截。';
-                    } finally {
-                        btn.innerText = '⚡ 發射深度審計';
+                    };
+
+                    xhr.onload = function() {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (xhr.status === 200 && data.status === 'success') {
+                                report.innerText = data.analysis;
+                                status.innerText = '✅ 審計報告解析完成。';
+                            } else {
+                                report.innerText = '❌ 運算中斷：' + (data.analysis || '未知錯誤');
+                                status.innerText = '⚠️ 執行失敗。';
+                            }
+                        } catch(err) {
+                            report.innerText = '❌ 系統錯誤：解析回傳數據失敗。';
+                        }
                         btn.disabled = false;
-                    }
+                    };
+
+                    xhr.open('POST', '/analyze');
+                    xhr.send(fd);
                 }
             </script>
         </body>
     </html>
     """
 
+# ---------------------------------------------------------
+# 🚀 APP 核心引擎（火力動態分流）
+# ---------------------------------------------------------
 @app.post("/analyze")
-async def analyze_audio(file: UploadFile = File(...)):
+async def analyze_audio(file: UploadFile = File(...), model_type: str = Form(...)):
     try:
-        audio_data = await file.read()
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        audio_content = await file.read()
         
+        # 🛡️ 根據前端選擇切換 Flash 或 Pro
+        model = genai.GenerativeModel(model_type)
+        
+        # 發動審計
         response = model.generate_content([
             CORE_PROMPT, 
-            {"mime_type": "audio/mp3", "data": audio_data}
+            {"mime_type": "audio/mpeg", "data": audio_content}
         ])
         
+        if not response.text:
+            return {"analysis": "核心未回傳數據，請確認音軌品質。", "status": "error"}
+
         return {"analysis": response.text, "status": "success"}
+        
     except Exception as e:
-        return {"error": str(e), "status": "failed"}
+        return {"analysis": str(e), "status": "error"}
