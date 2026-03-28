@@ -6,17 +6,19 @@ from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 
 # ==========================================
-# ⚡ 紅瞳重工：AS-CORE-COMMAND-CENTER 4.0 視覺權威版
+# ⚡ 紅瞳重工：AS-CORE-COMMAND-CENTER 4.5
+# 搭載 Gemini 3.1 Flash 戰略引擎
 # ==========================================
 
 load_dotenv()
 app = FastAPI()
 
+# 核心座標設定
 API_KEY = os.getenv("DIFY_API_KEY")
 BASE_URL = "https://eijidify.zeabur.app/v1"
 USER_ID = "Eiji_Commander"
 
-# --- 視覺強化控制艙 (HTML + CSS + Markdown Parser) ---
+# --- 視覺強化指揮艙 (HTML + Progress Sensor) ---
 HTML_CONTENT = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -27,94 +29,117 @@ HTML_CONTENT = """
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root { --main-green: #00ff41; --danger-red: #ff3e3e; --bg-black: #0a0b10; --card-bg: #14171f; }
-        body { background: var(--bg-black); color: #e0e0e0; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; line-height: 1.6; margin: 0; padding: 20px; }
+        body { background: var(--bg-black); color: #e0e0e0; font-family: 'Inter', sans-serif; margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: 0 auto; }
         
-        /* 標題區塊 */
-        .header { border-left: 5px solid var(--danger-red); padding-left: 20px; margin-bottom: 40px; background: linear-gradient(90deg, #1a1c23 0%, transparent 100%); padding-top: 10px; padding-bottom: 10px; }
-        h1 { color: #fff; margin: 0; letter-spacing: 3px; font-size: 28px; text-transform: uppercase; }
-        .status-bar { font-size: 12px; color: var(--main-green); font-family: 'Courier New', monospace; margin-top: 5px; }
+        .header { border-left: 5px solid var(--danger-red); padding: 15px 20px; margin-bottom: 30px; background: linear-gradient(90deg, #1a1c23 0%, transparent 100%); }
+        h1 { color: #fff; margin: 0; letter-spacing: 2px; font-size: 24px; }
+        .engine-tag { display: inline-block; background: #333; color: var(--main-green); padding: 2px 8px; border-radius: 3px; font-size: 10px; margin-top: 5px; border: 1px solid var(--main-green); }
 
-        /* 上傳控制區 */
-        .upload-zone { background: var(--card-bg); border: 1px solid #2a2d3a; padding: 30px; border-radius: 8px; text-align: center; margin-bottom: 30px; transition: 0.3s; }
-        .upload-zone:hover { border-color: var(--main-green); box-shadow: 0 0 15px rgba(0, 255, 65, 0.1); }
-        input[type="file"] { margin-bottom: 20px; color: #888; }
-        button { background: var(--main-green); color: #000; border: none; padding: 15px 40px; font-weight: 800; cursor: pointer; border-radius: 4px; font-size: 16px; transition: 0.3s; width: 100%; }
-        button:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,255,255,0.2); }
-
-        /* 戰報輸出區 */
-        #report-container { display: none; background: var(--card-bg); border: 1px solid #2a2d3a; padding: 40px; border-radius: 8px; position: relative; overflow: hidden; }
-        #report-container::before { content: "TOP SECRET / AUDIT REPORT"; position: absolute; top: 10px; right: 10px; font-size: 10px; color: #333; }
+        .control-panel { background: var(--card-bg); border: 1px solid #2a2d3a; padding: 30px; border-radius: 8px; text-align: center; }
         
-        /* Markdown 樣式優化 */
-        #result-content h1, #result-content h2, #result-content h3 { color: var(--main-green); border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 30px; }
-        #result-content table { width: 100%; border-collapse: collapse; margin: 20px 0; background: #0f1117; }
-        #result-content th { background: #1a1c23; color: var(--main-green); text-align: left; padding: 12px; border: 1px solid #2a2d3a; }
-        #result-content td { padding: 12px; border: 1px solid #2a2d3a; font-size: 14px; }
-        #result-content blockquote { border-left: 4px solid var(--main-green); background: #1a1c23; margin: 20px 0; padding: 15px 20px; font-style: italic; color: #fff; }
-        #result-content strong { color: var(--danger-red); }
-        #result-content hr { border: 0; border-top: 1px solid #333; margin: 40px 0; }
+        /* 物理進度條 */
+        .progress-container { display: none; width: 100%; background: #000; border: 1px solid #333; height: 20px; margin: 20px 0; position: relative; border-radius: 10px; overflow: hidden; }
+        .progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #004411, var(--main-green)); transition: width 0.1s; }
+        .progress-text { position: absolute; width: 100%; text-align: center; top: 0; left: 0; font-size: 12px; line-height: 20px; color: #fff; font-weight: bold; }
 
-        .loading { display: none; text-align: center; color: var(--main-green); padding: 20px; font-family: 'Courier New', monospace; }
-        .blink { animation: blinker 1s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
+        input[type="file"] { margin: 20px 0; color: #888; }
+        button { background: var(--main-green); color: #000; border: none; padding: 15px 40px; font-weight: 800; cursor: pointer; border-radius: 4px; font-size: 16px; transition: 0.3s; width: 100%; }
+        button:hover { background: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.4); }
+
+        #report-container { display: none; background: var(--card-bg); border: 1px solid #2a2d3a; padding: 40px; border-radius: 8px; margin-top: 30px; }
+        #result-content table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        #result-content th, #result-content td { border: 1px solid #2a2d3a; padding: 12px; font-size: 14px; }
+        #result-content th { background: #1a1c23; color: var(--main-green); }
+        #result-content blockquote { border-left: 4px solid var(--main-green); background: #1a1c23; padding: 15px; margin: 20px 0; color: #fff; }
+        
+        .loading-text { display: none; color: var(--main-green); font-family: 'Courier New', monospace; margin: 15px 0; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>紅瞳重工 戰略解析系統</h1>
-            <div class="status-bar">STATUS: ACTIVE // USER: {commander} // PROTOCOL: AS-CORE-4.0</div>
+            <h1>紅瞳重工 戰略審計指揮中心</h1>
+            <div class="engine-tag">CORE ENGINE: GEMINI 3.1 FLASH</div>
         </div>
 
-        <div class="upload-zone">
+        <div class="control-panel">
             <form id="uploadForm">
                 <input type="file" name="file" id="fileInput" accept="audio/*" required>
-                <button type="submit" id="submitBtn">啟動多模態神經審計</button>
+                <button type="submit" id="submitBtn">啟動多模態審計發射</button>
             </form>
-        </div>
 
-        <div id="loading" class="loading"><span class="blink">>>> 正在截獲音軌... 啟動 Gemini 1.5 Pro 神經網絡... 正在進行人性解碼...</span></div>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+            <div class="loading-text" id="loadingText">>>> 正在通過 Zeabur 網關... 啟動 Gemini 3.1 Flash 解析中...</div>
+        </div>
 
         <div id="report-container">
             <div id="result-content"></div>
-            <button onclick="window.print()" style="margin-top:40px; background:#333; color:#fff; font-size:12px; padding:10px;">匯出戰術存檔 (Print to PDF)</button>
         </div>
     </div>
 
     <script>
         const form = document.getElementById('uploadForm');
         const btn = document.getElementById('submitBtn');
-        const loading = document.getElementById('loading');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const loadingText = document.getElementById('loadingText');
         const reportContainer = document.getElementById('report-container');
         const resultContent = document.getElementById('result-content');
 
-        form.onsubmit = async (e) => {
+        form.onsubmit = (e) => {
             e.preventDefault();
-            btn.style.display = 'none';
-            loading.style.display = 'block';
-            reportContainer.style.display = 'none';
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
 
-            const formData = new FormData(form);
-            try {
-                const response = await fetch('/upload-and-run', { method: 'POST', body: formData });
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    // 使用 marked 解析 Markdown 並渲染到 HTML
+            // 歸零顯示
+            btn.style.display = 'none';
+            progressContainer.style.display = 'block';
+            reportContainer.style.display = 'none';
+            progressBar.style.width = '0%';
+            progressText.innerText = '0%';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const xhr = new XMLHttpRequest();
+
+            // 監聽物理上傳進度
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const percent = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressText.innerText = `上傳中: ${percent}% (${(event.loaded / 1024 / 1024).toFixed(2)}MB / ${(event.total / 1024 / 1024).toFixed(2)}MB)`;
+                    if (percent === 100) {
+                        loadingText.style.display = 'block';
+                        progressText.innerText = '投彈成功，等待 Gemini 3.1 Flash 回報...';
+                    }
+                }
+            };
+
+            xhr.onload = () => {
+                const data = JSON.parse(xhr.responseText);
+                if (xhr.status === 200 && data.status === 'success') {
                     resultContent.innerHTML = marked.parse(data.report);
                     reportContainer.style.display = 'block';
-                    // 平滑滾動到結果
-                    reportContainer.scrollIntoView({ behavior: 'smooth' });
+                    loadingText.style.display = 'none';
                 } else {
-                    alert("❌ 系統故障：" + JSON.stringify(data.error));
+                    alert("❌ 審計失敗: " + JSON.stringify(data.error));
+                    btn.style.display = 'block';
                 }
-            } catch (err) {
+            };
+
+            xhr.onerror = () => {
                 alert("❌ 物理連線中斷");
-            } finally {
                 btn.style.display = 'block';
-                loading.style.display = 'none';
-            }
+            };
+
+            xhr.open('POST', '/upload-and-run', true);
+            xhr.send(formData);
         };
     </script>
 </body>
@@ -128,9 +153,9 @@ async def index():
 @app.post("/upload-and-run")
 async def upload_and_run(file: UploadFile = File(...)):
     if not API_KEY:
-        return {"status": "failed", "error": "DIFY_API_KEY Missing"}
+        return {"status": "failed", "error": "API_KEY Missing"}
     try:
-        # 1. 檔案上傳
+        # 1. 檔案上傳至 Dify
         upload_url = f"{BASE_URL}/files/upload"
         headers = {"Authorization": f"Bearer {API_KEY}"}
         file_content = await file.read()
@@ -139,7 +164,7 @@ async def upload_and_run(file: UploadFile = File(...)):
         upload_response.raise_for_status()
         file_id = upload_response.json().get("id")
 
-        # 2. 觸發 Workflow (Array[File] 格式)
+        # 2. 觸發 Gemini 3.1 Flash 工作流
         workflow_url = f"{BASE_URL}/workflows/run"
         payload = {
             "inputs": {
@@ -154,7 +179,7 @@ async def upload_and_run(file: UploadFile = File(...)):
         if workflow_response.status_code != 200:
             return {"status": "failed", "error": workflow_response.json()}
             
-        # 3. 回收報表
+        # 3. 解析結果
         outputs = workflow_response.json().get("data", {}).get("outputs", {})
         report = outputs.get("戰報") or outputs.get("戰略審計報告") or outputs.get("text") or str(outputs)
         
