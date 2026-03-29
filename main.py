@@ -8,8 +8,8 @@ from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 
 # ==========================================
-# ⚡ 紅瞳重工：AS-CORE-COMMAND-CENTER 6.7
-# 修正語法熔毀 (Syntax-Shield) | 強化進度回饋
+# ⚡ 紅瞳重工：AS-CORE-COMMAND-CENTER 6.8
+# 修正語法熔毀 | 強化 STAGE 1 壓縮進度條
 # ==========================================
 
 load_dotenv()
@@ -20,13 +20,13 @@ API_KEY = os.getenv("DIFY_API_KEY")
 BASE_URL = "https://eijidify.zeabur.app/v1"
 USER_ID = "Eiji_Commander"
 
-# --- 視覺強化指揮艙 (已校對閉合標籤) ---
+# --- 視覺強化指揮艙 ---
 HTML_CONTENT = """
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>紅瞳重工 | 戰略審計指揮中心 6.7</title>
+    <title>紅瞳重工 | 戰略審計指揮中心 6.8</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.all.min.js"></script>
     <style>
@@ -52,7 +52,7 @@ HTML_CONTENT = """
 <body>
     <div class="container">
         <div class="header">
-            <h1>紅瞳重工 戰略審計指揮中心 6.7</h1>
+            <h1>紅瞳重工 戰略審計指揮中心 6.8</h1>
             <div style="color: var(--main-green); font-size: 12px;">SYSTEM STATUS: SYNTAX-SHIELD ACTIVE</div>
         </div>
         <div class="control-panel">
@@ -183,7 +183,7 @@ HTML_CONTENT = """
     </script>
 </body>
 </html>
-""" # <--- 這裡必須精準閉合
+"""
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
@@ -194,7 +194,6 @@ async def upload_and_run(file: UploadFile = File(...)):
     if not API_KEY:
         return {"status": "failed", "error": "API_KEY Missing"}
     try:
-        # 1. 讀取並發射
         file_content = await file.read()
         upload_url = f"{BASE_URL}/files/upload"
         headers = {"Authorization": f"Bearer {API_KEY}"}
@@ -203,7 +202,6 @@ async def upload_and_run(file: UploadFile = File(...)):
         upload_response.raise_for_status()
         file_id = upload_response.json().get("id")
 
-        # 2. 啟動工作流
         workflow_url = f"{BASE_URL}/workflows/run"
         payload = {
             "inputs": {
@@ -225,5 +223,4 @@ async def upload_and_run(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    # 這裡使用字串形式 "main:app" 以確保 Zeabur 的 Uvicorn 能正確加載
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
